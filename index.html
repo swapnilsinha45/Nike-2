@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nike Football Campaign Simulator: Enhanced</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Tailwind Configuration for Nike Branding
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Custom color palette based on a dark, performance aesthetic
+                        'nike-black': '#101A24', // Dark Navy Background
+                        'nike-volt': '#3B82F6', // Vibrant Blue Blue Accent
+                        'gray-dark': '#213241', // Lighter Navy/Container Background
+                        'success': '#4ADE80', // Green
+                        'warning': '#FACC15', // Yellow
+                        'danger': '#F87171', // Red
+                        'event-positive': '#FFD700', // Gold for positive events
+                        'event-negative': '#FF4500', // Orange-Red for negative events
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for better aesthetic */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Ensure the body takes full height for centering */
+        html, body {
+            height: 100%;
+        }
+        /* Hide initial state elements */
+        .hidden-start {
+            display: none;
+        }
+        /* Gradient for the final score display */
+        .metric-glow {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.7); /* Blue accent glow */
+        }
+        /* Custom colors for progress bars (referenced in JS) */
+        .bar-buzz { background-color: var(--tw-colors-danger); }
+        .bar-relevance { background-color: var(--tw-colors-nike-volt); }
+        .bar-authenticity { background-color: var(--tw-colors-success); }
+        
+        /* New styles for the Boardroom Briefing cards */
+        .briefing-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid var(--tw-colors-nike-volt);
+        }
+
+        /* Added fade-in animation for the dashboard after start */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #dashboard {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Pulse animation for metric change visualization */
+        @keyframes metricPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
+            50% { transform: scale(1.03); box-shadow: 0 0 10px rgba(59, 130, 246, 0.9); }
+            100% { transform: scale(1); box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .metric-pulse-active {
+            animation: metricPulse 0.4s ease-out;
+        }
+        /* Style for the random event box */
+        .event-box {
+            padding: 1rem;
+            margin-top: 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+        .event-positive {
+            background-color: #1a4d2c;
+            border: 2px solid var(--tw-colors-event-positive);
+            color: var(--tw-colors-event-positive);
+        }
+        .event-negative {
+            background-color: #5c161a;
+            border: 2px solid var(--tw-colors-event-negative);
+            color: var(--tw-colors-event-negative);
+        }
+
+        /* Tooltip styling for metric definitions */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip {
+            visibility: hidden;
+            background-color: #1a1a1a;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%; /* Position above the text */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            font-weight: normal;
+            font-size: 0.75rem;
+        }
+        .tooltip-container:hover .tooltip {
+            visibility: visible;
+        }
+        /* Arrow for the tooltip */
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1a1a1a transparent transparent transparent;
+        }
+        
+        /* Spinner CSS */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #3B82F6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-nike-black text-white font-sans flex items-center justify-center min-h-screen p-4">
+
+    <div id="simulator-container" class="w-full max-w-4xl bg-gray-dark border-4 border-nike-volt rounded-xl shadow-2xl p-6 md:p-10 transition-all duration-500">
+
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-5xl font-extrabold text-nike-volt uppercase tracking-wider">
+                NIKE FOOTBALL: CAMPAIGN SIMULATOR
+            </h1>
+            <p class="text-xs italic text-gray-500 mb-2">MAXIMUM IMPACT.</p> 
+            <p id="sub-heading" class="text-md md:text-lg text-gray-300 mt-2">
+                Phase: Strategic Briefing
+            </p>
+        </header>
+        
+        <div id="game-content">
+            
+            <!-- Start Screen / Briefing -->
+            <div id="start-screen" class="text-center py-5">
+                <p id="briefing-title" class="text-2xl mb-6 font-bold text-nike-volt">Welcome, Nike Marketing Manager.</p>
+
+                <div id="briefing-content" class="text-left max-w-3xl mx-auto space-y-6">
+                    
+                    <p class="text-xl font-semibold border-b border-gray-600 pb-2 mb-4">
+                        🎯 Campaign Objective: Regaining the Pitch
+                    </p>
+                    
+                    <p class="text-lg text-gray-300">
+                        <span class="font-bold text-nike-volt">The Situation:</span> Nike is losing cultural and market leadership in football. Our strategy has become stale, focusing too heavily on elite stars while **Adidas** dominates the cultural conversation and grassroots ecosystem.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-white">
+                        
+                        <div class="p-4 rounded-lg briefing-card border-l-4 border-red-500">
+                            <span class="text-4xl block mb-2">📉</span>
+                            <p class="font-bold text-lg mb-1">Authenticity Drain</p>
+                            <p class="text-sm text-gray-400">Template-heavy products lack club identity. We are losing loyalty where it matters most: the fan and community level.</p>
+                        </div>
+                        
+                        <div class="p-4 rounded-lg briefing-card border-l-4 border-yellow-500">
+                            <span class="text-4xl block mb-2">⚠️</span>
+                            <p class="font-bold text-lg mb-1">Partnership Gap</p>
+                            <p class="text-sm text-gray-400">Loss of key symbolic partnerships (like the Premier League ball and major clubs) has eroded our critical football credibility.</p>
+                        </div>
+                        
+                        <div class="p-4 rounded-lg briefing-card border-l-4 border-green-500">
+                            <span class="text-4xl block mb-2">📱</span>
+                            <p class="font-bold text-lg mb-1">Outdated Narrative</p>
+                            <p class="text-sm text-gray-400">Our superstar-centric marketing fails to connect with a modern, fragmented, and community-driven media ecosystem.</p>
+                        </div>
+                    </div>
+                    
+                    <p class="text-lg text-gray-300 pt-4">
+                        <span class="font-bold text-nike-volt">The Mandate:</span> We need a revolutionary digital campaign that breaks this pattern. Your task is to make **eight critical decisions** that will define the new Nike Football narrative, increase our Cultural Relevance, and restore Authenticity among youth audiences.
+                    </p>
+                </div>
+
+                <button onclick="startGame()" class="mt-10 bg-nike-volt text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-nike-volt transition duration-300 transform hover:scale-105 uppercase">
+                    Begin Strategic Planning
+                </button>
+            </div>
+
+            <!-- Main Dashboard / Decision Making -->
+            <div id="dashboard" class="hidden-start">
+                
+                <!-- Metrics Bar -->
+                <div class="space-y-4 mb-8">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-32 text-xs text-gray-400 uppercase font-bold tooltip-container">
+                            Social Buzz 
+                            <span class="text-xs text-nike-volt cursor-pointer">ⓘ
+                                <span class="tooltip">Measures media mentions, viral velocity, and short-term market noise (Hype). High Buzz means high visibility.</span>
+                            </span>
+                        </div>
+                        <div class="flex-1 bg-gray-700 rounded-full h-3">
+                            <div id="bar-buzz" class="h-3 rounded-full transition-all duration-500 bar-buzz" style="width: 33%;"></div>
+                        </div>
+                        <p id="metric-buzz" class="w-10 text-lg font-bold text-danger text-right">50</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="w-32 text-xs text-gray-400 uppercase font-bold tooltip-container">
+                            Cultural Relevance
+                            <span class="text-xs text-nike-volt cursor-pointer">ⓘ
+                                <span class="tooltip">Measures connection to trendsetters, youth culture, and alignment with modern societal values (Future Proofing).</span>
+                            </span>
+                        </div>
+                        <div class="flex-1 bg-gray-700 rounded-full h-3">
+                            <div id="bar-relevance" class="h-3 rounded-full transition-all duration-500 bar-relevance" style="width: 33%;"></div>
+                        </div>
+                        <p id="metric-relevance" class="w-10 text-lg font-bold text-nike-volt text-right">50</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="w-32 text-xs text-gray-400 uppercase font-bold tooltip-container">
+                            Authenticity
+                            <span class="text-xs text-nike-volt cursor-pointer">ⓘ
+                                <span class="tooltip">Measures credibility among core fans, product quality perception, and connection to grassroots football heritage (Trust/Loyalty).</span>
+                            </span>
+                        </div>
+                        <div class="flex-1 bg-gray-700 rounded-full h-3">
+                            <div id="bar-authenticity" class="h-3 rounded-full transition-all duration-500 bar-authenticity" style="width: 33%;"></div>
+                        </div>
+                        <p id="metric-authenticity" class="w-10 text-lg font-bold text-success text-right">50</p>
+                    </div>
+                </div>
+
+                <!-- Decision Panel -->
+                <div id="decision-panel" class="p-4 md:p-6 bg-nike-black rounded-xl border border-gray-700">
+                    <h2 id="decision-question" class="text-2xl font-semibold mb-4 text-nike-volt"></h2>
+                    <p id="decision-context" class="text-gray-300 mb-6"></p>
+
+                    <div id="choice-buttons" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+                </div>
+
+                <!-- Feedback Panel -->
+                <div id="feedback-panel" class="mt-8 p-5 bg-gray-dark border border-gray-600 rounded-lg hidden-start">
+                    <h3 class="text-xl font-bold text-nike-volt mb-2">AI Campaign Analysis:</h3>
+                    <p id="feedback-text" class="text-gray-300 mb-4"></p>
+                    <div id="event-narrative-container">
+                        <!-- Random Event narrative goes here -->
+                    </div>
+                    <button id="next-button" class="w-full bg-nike-volt text-white font-bold py-2 rounded-full hover:bg-white hover:text-nike-black transition duration-200">
+                        Continue Strategy
+                    </button>
+                </div>
+            </div>
+
+            <!-- Final Score Screen -->
+            <div id="final-screen" class="hidden-start text-center py-10">
+                <h2 class="text-4xl md:text-5xl font-extrabold text-nike-volt uppercase mb-4 metric-glow">Campaign Finalized!</h2>
+                <p id="final-summary" class="text-xl text-gray-300 mb-8"></p>
+                
+                <div class="inline-block p-6 rounded-xl bg-nike-black border-2 border-nike-volt mb-8">
+                    <h3 class="text-2xl font-bold mb-3 text-white">Final Scorecard (Max 150/Metric)</h3>
+                    <p class="text-3xl text-danger font-extrabold mb-1">Buzz: <span id="final-buzz"></span></p>
+                    <p class="text-3xl text-nike-volt font-extrabold mb-1">Relevance: <span id="final-relevance"></span></p>
+                    <p class="text-3xl text-success font-extrabold">Authenticity: <span id="final-authenticity"></span></p>
+                </div>
+
+                <p id="final-rating" class="text-2xl font-semibold text-white mb-6"></p>
+
+                <!-- NEW: Container for the detailed analysis -->
+                <div id="final-analysis" class="mt-12 w-full max-w-3xl mx-auto">
+                    <!-- Detailed analysis will be inserted here -->
+                </div>
+                
+                <!-- NEW: Slogan Generation Area -->
+                <div id="slogan-output" class="mt-8 w-full max-w-3xl mx-auto">
+                    <!-- Slogans will be injected here -->
+                </div>
+
+                <button onclick="resetGame()" class="bg-gray-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-white transition duration-300 transform hover:scale-105 uppercase">
+                    Rethink Strategy
+                </button>
+            </div>
+
+        </div>
+    </div> 
+    
+    <script>
+        // --- State Management ---
+        let currentRound = 0;
+        let metrics = {
+            buzz: 50,
+            relevance: 50,
+            authenticity: 50
+        };
+        const MAX_METRIC = 150; // Max possible score for one metric
+        // Tracks all 8 strategic choices
+        const chosenTags = {
+            focus: null,
+            product: null,
+            partnership: null,
+            objective: null,
+            target: null,
+            channel: null,
+            investment: null,
+            kpi: null
+        };
+        
+        // NEW: Store history of all metric changes for final analysis
+        let gameHistory = []; 
+
+        // --- DOM Elements (Fetched globally, used locally) ---
+        const startScreen = document.getElementById('start-screen');
+        const dashboard = document.getElementById('dashboard');
+        const finalScreen = document.getElementById('final-screen');
+        const subHeading = document.getElementById('sub-heading');
+        const decisionQuestion = document.getElementById('decision-question');
+        const decisionContext = document.getElementById('decision-context');
+        const choiceButtonsContainer = document.getElementById('choice-buttons');
+        const feedbackPanel = document.getElementById('feedback-panel');
+        const feedbackText = document.getElementById('feedback-text');
+        const nextButton = document.getElementById('next-button'); // Get the Next/Continue button
+        const eventNarrativeContainer = document.getElementById('event-narrative-container'); // NEW CONTAINER
+        const sloganOutputContainer = document.getElementById('slogan-output'); // NEW OUTPUT CONTAINER
+
+        // References for progress bars
+        const barBuzz = document.getElementById('bar-buzz');
+        const barRelevance = document.getElementById('bar-relevance');
+        const barAuthenticity = document.getElementById('bar-authenticity');
+
+        /** Maps metric keys to their corresponding DOM elements (for easier iteration). */
+        const metricElements = {
+            buzz: { bar: barBuzz, num: document.getElementById('metric-buzz'), colorClass: 'text-danger' },
+            relevance: { bar: barRelevance, num: document.getElementById('metric-relevance'), colorClass: 'text-nike-volt' },
+            authenticity: { bar: barAuthenticity, num: document.getElementById('metric-authenticity'), colorClass: 'text-success' }
+        };
+        
+        // --- Core Game Data ---
+        const rounds = [
+            {
+                // Round 1: Brand Portfolio Priority (Q3)
+                question: "DECISION 1/8: Brand Portfolio - Club Deals vs. Fan Identity",
+                tagKey: "focus",
+                context: "Fan research shows many supporters prefer kit suppliers other than the brand linked to their club. What is the immediate strategic implication for Nike?",
+                choices: [
+                    {
+                        text: "A: Club-supplier deals aren’t the main driver — focus on fan identity, design, and heritage.",
+                        tag: "fan-first",
+                        impact: { buzz: -5, relevance: 15, authenticity: 20 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Gains massive Authenticity and Relevance by focusing on culture. Sacrifices some short-term Buzz.",
+                            risk: "Creates conflict with aggressive Elite targets later on.",
+                            reward: "Creates high synergy with Quality products and Loyalty objectives.",
+                        },
+                        narrative: "This radical, fan-centric realignment prioritizes Authenticity and Relevance built at the community level over guaranteed visibility from elite partners. This may alarm investors in the short term."
+                    },
+                    {
+                        text: "B: Double down on elite club deals anyway — visibility matters more than fan sentiment.",
+                        tag: "club-first",
+                        impact: { buzz: 20, relevance: 5, authenticity: -15 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Guaranteed Buzz and media presence. Suffers a large Authenticity penalty for ignoring fan sentiment.",
+                            risk: "High exposure to negative Elite Player events and increases risk of community Backlash.",
+                            reward: "Sets the stage for easier achievement of Hype KPIs and Elite Target goals.",
+                        },
+                        narrative: "This move restores immediate media presence and reassures partners. However, by ignoring fan sentiment, we reinforce the perception that Nike is driven purely by commercial interests, further eroding Authenticity."
+                    }
+                ]
+            },
+            {
+                // Round 2: Product Revitalization (Q2 & Q10)
+                question: "DECISION 2/8: Product Direction - Hype vs. Quality",
+                tagKey: "product",
+                context: "To revive demand and combat negative fan perceptions about current kit quality, which product direction do you prioritize for the next major launch cycle?",
+                choices: [
+                    {
+                        text: "A: Launch a strong retro/throwback kit line leveraging nostalgia.",
+                        tag: "product-retro",
+                        impact: { buzz: 25, relevance: 10, authenticity: 5 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Immediate Buzz boost from trend-setters and collectors. Marginal Authenticity gain from heritage connection.",
+                            risk: "High material costs expose strategy to the 'Material Cost Spike' event.",
+                            reward: "Creates strong synergy with Hype Objectives and Social Channel marketing.",
+                        },
+                        narrative: "Nostalgia is guaranteed hype and drives short-term sales. This choice secures immediate Buzz and Cultural Relevance among trend-setters, but doesn't fundamentally address long-term quality concerns."
+                    },
+                    {
+                        text: "B: Launch a “quality-first” redesign campaign using premium materials and blending modern performance with retro aesthetics.",
+                        tag: "product-quality",
+                        impact: { buzz: 0, relevance: 15, authenticity: 20 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Major long-term Authenticity boost. Sacrifices immediate launch Buzz for credibility.",
+                            risk: "Slower sales pace and misses opportunities for rapid media virality.",
+                            reward: "Mitigates future Authenticity Backlash events. Strong synergy with Loyalty KPIs.",
+                        },
+                        narrative: "This is a necessary investment in the brand’s foundation. By prioritizing quality, we make a powerful statement about Authenticity, even if the launch buzz is slower to build."
+                    }
+                ]
+            },
+            {
+                // Round 3: Sponsorship Aggression (Q1 & Q8)
+                question: "DECISION 3/8: Sponsorship Strategy - Compete Now or Rebuild Equity?",
+                tagKey: "partnership",
+                context: "Nike’s club-kit portfolio has shrunk and its visibility is falling. How aggressive should we be with new, expensive club sponsorship deals right now?",
+                choices: [
+                    {
+                        text: "A: Aggressive—compete for major clubs immediately to regain top-tier visibility.",
+                        tag: "aggressive-sponsor",
+                        impact: { buzz: 30, relevance: -5, authenticity: -10 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Massive immediate Buzz from media announcements. Drops in Relevance and Authenticity due to budget strain and perception of desperation.",
+                            risk: "Increases vulnerability to 'Elite Player Walkout' events.",
+                            reward: "Amplifies the reach of Elite Target marketing decisions.",
+                        },
+                        narrative: "Maximum spending for maximum visibility. This strategy generates huge initial Buzz and reassures the market, but the cost drains budget from grassroots activations and is seen as reactive, not strategic."
+                    },
+                    {
+                        text: "B: Conservative—pause and invest the funds into fan-focused events, heritage product drops, and grassroots talent.",
+                        tag: "conservative-heritage",
+                        impact: { buzz: -15, relevance: 15, authenticity: 25 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Significant long-term boost to Authenticity and Relevance. Accepts a large immediate drop in Buzz.",
+                            risk: "Leaves Nike exposed during rival's major announcements.",
+                            reward: "Enables synergy with Grassroots Target and Fan-First Focus decisions.",
+                        },
+                        narrative: "A measured, long-term approach. We sacrifice short-term market headlines for long-term brand equity. This boosts Authenticity and deepens cultural roots."
+                    }
+                ]
+            },
+             {
+                // Round 4: Retro Kit Primary Objective (Q4)
+                question: "DECISION 4/8: Campaign Objective - Retro Kit Launch",
+                tagKey: "objective",
+                context: "If Nike launches retro kits, what should be the primary objective to define success and marketing execution?",
+                choices: [
+                    {
+                        text: "A: Boost short-term hype and sales through limited drops and scarcity.",
+                        tag: "hype-objective",
+                        impact: { buzz: 20, relevance: 0, authenticity: -5 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "High Buzz potential but risks alienating core fans, leading to Authenticity decay.",
+                            risk: "Leads to clash when paired with Loyalty-driven channel strategies (Legends).",
+                            reward: "High synergy with Retro products and Social Channel marketing.",
+                        },
+                        narrative: "Prioritizing hype ensures high media coverage and instant sell-out rates, but turning heritage into a commodity risks alienating long-time fans who value true history over marketing stunts."
+                    },
+                    {
+                        text: "B: Rebuild emotional connection with long-time fans through heritage storytelling.",
+                        tag: "loyalty-objective",
+                        impact: { buzz: -5, relevance: 15, authenticity: 20 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Major boost to Loyalty and Cultural Relevance. Trades immediate Buzz for foundational trust.",
+                            risk: "Lower visibility makes the strategy susceptible to negative competitor noise.",
+                            reward: "Enables strong synergy with Quality products and the Legends Channel strategy.",
+                        },
+                        narrative: "Focusing on loyalty builds genuine trust and Authenticity. This solid foundation makes future products easier to launch, but the strategy is slower and generates less immediate media Buzz."
+                    }
+                ]
+            },
+            {
+                // Round 5: Target Audience Focus (Q7)
+                question: "DECISION 5/8: Priority Target for Identity Rebuild",
+                tagKey: "target",
+                context: "To successfully rebuild Nike Football’s core identity and cultural standing, where must our marketing efforts be focused?",
+                choices: [
+                    {
+                        text: "A: Grassroots & amateur players for long-term brand loyalty.",
+                        tag: "target-grassroots",
+                        impact: { buzz: 0, relevance: 10, authenticity: 20 },
+                        // Dynamic Check: Synergizes best with conservative deals
+                        dynamicImpact: (currentMetrics) => {
+                            if (chosenTags.partnership === 'conservative-heritage') return { authenticity: 10, narrative: "Synergy: The Conservative sponsorship strategy successfully directed funds toward this crucial grassroots effort." };
+                            return { authenticity: 0, narrative: "" };
+                        },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Excellent Authenticity and Relevance. Zero immediate Buzz.",
+                            risk: "Leaves the brand vulnerable if a major Elite player defects to a rival.",
+                            reward: "Amplifies positive market events like 'Unexpected Club Victory'.",
+                        },
+                        narrative: "Targeting the foundation of the sport builds unwavering long-term loyalty and Authenticity, but visibility among mainstream media will remain muted."
+                    },
+                    {
+                        text: "B: Elite clubs and pro athletes for rapid global visibility.",
+                        tag: "target-elite",
+                        impact: { buzz: 25, relevance: 5, authenticity: -10 },
+                        // Dynamic Check: Synergizes best with aggressive deals
+                        dynamicImpact: (currentMetrics) => {
+                            if (chosenTags.partnership === 'aggressive-sponsor') return { buzz: 10, narrative: "Synergy: The Aggressive sponsorship approach creates an ideal stage for marketing elite players and clubs." };
+                            return { buzz: 0, narrative: "" };
+                        },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Maximum Buzz delivery. Sacrifices Authenticity due to perceived remoteness from fans.",
+                            risk: "High exposure to negative partner events like 'Elite Player Walkout'.",
+                            reward: "Strong synergy with Aggressive Sponsorship strategy.",
+                        },
+                        narrative: "Focusing on the elite delivers rapid, global Buzz, instantly hitting high visibility benchmarks. However, it risks reinforcing the current 'stale' narrative of being disconnected from the fan base."
+                    }
+                ]
+            },
+            {
+                // Round 6: Campaign Channel Anchor (Q5)
+                question: "DECISION 6/8: Channel Strategy - Retro Kit Marketing Anchor",
+                tagKey: "channel",
+                context: "We need a platform to anchor the retro-kit marketing. Which channel strategy maximizes our chosen objective (Hype or Loyalty)?",
+                choices: [
+                    {
+                        text: "A: Social/influencer campaigns aimed at trend-setters and fast culture.",
+                        tag: "channel-social",
+                        impact: { buzz: 20, relevance: 10, authenticity: -5 },
+                        // Dynamic Check: Conflict with loyalty objective
+                        dynamicImpact: (currentMetrics) => {
+                            if (chosenTags.objective === 'loyalty-objective') return { authenticity: -10, narrative: "*CLASH:* An influencer-led channel undermines the heritage storytelling required by the Loyalty objective." };
+                            return { authenticity: 0, narrative: "" };
+                        },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Strong Buzz/Relevance immediately. Authenticity loss due to transactional nature.",
+                            risk: "Creates metric decay if paired with a Loyalty Objective.",
+                            reward: "High synergy with Hype Objectives and Retro products.",
+                        },
+                        narrative: "The modern method for mass reach. This generates rapid Buzz and positions the retro line as culturally Relevant streetwear, but the transactional nature of influencer marketing can dilute true heritage."
+                    },
+                    {
+                        text: "B: Collaborations with ex-players and legends associated with iconic kits.",
+                        tag: "channel-legends",
+                        impact: { buzz: 5, relevance: 15, authenticity: 20 },
+                        // Dynamic Check: Synergy with loyalty objective
+                        dynamicImpact: (currentMetrics) => {
+                            if (chosenTags.objective === 'loyalty-objective') return { authenticity: 10, narrative: "Synergy: Collaborating with legends provides instant credibility and perfectly amplifies the Loyalty objective." };
+                            return { authenticity: 0, narrative: "" };
+                        },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Major Authenticity gain and sustained Relevance. Lower immediate Buzz.",
+                            risk: "Requires long lead time and significant budget for asset creation.",
+                            reward: "High synergy with Loyalty Objectives and Quality products.",
+                        },
+                        narrative: "This choice is an investment in storytelling and authenticity. Legends provide deep, credible roots for the retro line, building Authenticity, but limiting the speed and breadth of the initial Buzz."
+                    }
+                ]
+            },
+            {
+                // Round 7: Investment Allocation (Q6)
+                question: "DECISION 7/8: Investment Allocation - Football vs. Apparel",
+                tagKey: "investment",
+                context: "Nike’s overall apparel market share is strong, but football visibility is falling and profits are lower. How should corporate funds be allocated?",
+                choices: [
+                    {
+                        text: "A: Invest heavily to rebuild football presence despite lower short-term profits.",
+                        tag: "invest-football",
+                        impact: { buzz: 10, relevance: 20, authenticity: 10 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Strong holistic boost across all metrics—a statement of intent.",
+                            risk: "Makes the company more vulnerable to the 'Material Cost Spike' event.",
+                            reward: "Strong synergy with 'Positive Investor Reaction' events.",
+                        },
+                        narrative: "This signals serious commitment, restoring faith in the Football division. It boosts all metrics but is a huge risk to overall quarterly margins. It's a statement of intent."
+                    },
+                    {
+                        text: "B: Accept reduced football focus and prioritise broader apparel categories where profits are higher.",
+                        tag: "invest-apparel",
+                        impact: { buzz: 0, relevance: -10, authenticity: -15 },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Safeguards corporate profits. Severely damages Relevance and Authenticity in the football market.",
+                            risk: "Increases probability of negative market perception (Brand Fatigue).",
+                            reward: "Mitigates impact of 'Material Cost Spike' event.",
+                        },
+                        narrative: "This safeguards corporate profitability, but sends a clear message to the football world that Nike views the sport as secondary. This significantly damages both Relevance and Authenticity long-term."
+                    }
+                ]
+            },
+            {
+                // Round 8: Success Metric Alignment (Q9)
+                question: "DECISION 8/8: Campaign Success Metrics (KPI Alignment)",
+                tagKey: "kpi",
+                context: "The final decision: choosing the Key Performance Indicator (KPI) that senior leadership will use to judge the success of the entire revitalisation strategy.",
+                choices: [
+                    {
+                        text: "A: Sell-out rates & resale demand (Hype Metrics).",
+                        tag: "kpi-hype",
+                        impact: { buzz: 10, relevance: 10, authenticity: -5 },
+                        // DYNAMIC IMPACT: Synergy with HYPE products/aggressive deals/hype objective.
+                        dynamicImpact: (currentMetrics) => {
+                            let boost = 0;
+                            let dynamicInsight = '';
+
+                            if (chosenTags.product === 'product-retro') {
+                                boost += 15;
+                                dynamicInsight += ' Alignment with the **Retro** product line maximized hype and sell-out metrics.';
+                            }
+                            if (chosenTags.objective === 'hype-objective') {
+                                boost += 10;
+                                dynamicInsight += ' Focusing the KPI on Hype reinforced the campaign’s core goal to drive scarcity.';
+                            }
+                            if (chosenTags.partnership === 'aggressive-sponsor') {
+                                boost += 5;
+                                dynamicInsight += ' The aggressive sponsorship provided enough media context to amplify the hype-driven launch.';
+                            }
+                            return { buzz: boost, relevance: 0, authenticity: 0, dynamicInsight: dynamicInsight };
+                        },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Directly boosts Buzz and Relevance. Authenticity decay from transactional focus.",
+                            risk: "Exposes the brand to 'KPI Misalignment Leak' event penalty.",
+                            reward: "High synergy with all Hype-related strategic decisions.",
+                        },
+                        narrative: "A focus on scarcity and hype. While this drives excellent immediate sales and short-term Buzz, it fails to measure the long-term emotional connection needed to fix the brand's core problems."
+                    },
+                    {
+                        text: "B: Increase in brand favourability among general football fans (Loyalty Metrics).",
+                        tag: "kpi-loyalty",
+                        impact: { buzz: -5, relevance: 15, authenticity: 15 },
+                        // DYNAMIC IMPACT: Synergy with Loyalty products/conservative deals/loyalty objective.
+                        dynamicImpact: (currentMetrics) => {
+                            let boost = 0;
+                            let dynamicInsight = '';
+
+                            if (chosenTags.product === 'product-quality') {
+                                boost += 15;
+                                dynamicInsight += ' The Loyalty KPI perfectly complements the **Quality-First** product strategy, validating the long-term investment.';
+                            }
+                            if (chosenTags.objective === 'loyalty-objective') {
+                                boost += 10;
+                                dynamicInsight += ' The Loyalty KPI directly measures success for the heritage storytelling objective.';
+                            }
+                            if (chosenTags.focus === 'fan-first') {
+                                boost += 5;
+                                dynamicInsight += ' The fan-first focus amplified the positive feedback measured by this KPI.';
+                            }
+                            return { buzz: 0, relevance: 0, authenticity: boost, dynamicInsight: dynamicInsight };
+                        },
+                        // NEW ANALYSIS BLOCK
+                        analysis: {
+                            static: "Sacrifices Buzz for major Authenticity and Relevance gains. Focuses on foundational trust.",
+                            risk: "Makes immediate sales performance look weak to stakeholders.",
+                            reward: "High synergy with all Loyalty-related strategic decisions.",
+                        },
+                        narrative: "A focus on deep, long-term equity. This prioritizes rebuilding emotional connection and brand favorability, which are necessary to fix the core Authenticity issue, even if it sacrifices immediate Buzz."
+                    }
+                ]
+            }
+        ];
+
+        // --- Random Event Data (EXPANDED SYSTEM) ---
+        const randomEvents = [
+            // Positive Events (Reward)
+            {
+                name: "Viral TikTok Challenge",
+                description: "A popular influencer spontaneously uses your campaign sound/aesthetic in a viral TikTok, boosting media attention significantly.",
+                impact: { buzz: 25, relevance: 5, authenticity: 0 },
+                dynamicImpact: (tags) => {
+                    let boost = tags.product === 'product-retro' ? 10 : 0; // Synergy with Retro
+                    if (tags.channel === 'channel-social') boost += 5; // Synergy with Social Channel
+                    return { change: boost, narrative: tags.product === 'product-retro' ? "Your Retro product choice created the perfect aesthetic hook for this viral trend." : "" };
+                },
+                type: 'positive'
+            },
+            {
+                name: "Competitor Misstep: Social Blunder",
+                description: "Adidas's star ambassador is involved in a controversial social media blunder, creating an immediate opportunity for Nike to capture ethical high ground.",
+                impact: { buzz: 5, relevance: 10, authenticity: 15 },
+                dynamicImpact: (tags) => {
+                    let boost = tags.objective === 'loyalty-objective' ? 10 : 0; // Loyalty strategies benefit most
+                    return { change: boost, narrative: tags.objective === 'loyalty-objective' ? "Your Loyalty focus was perfectly positioned to capitalize on competitor noise." : "" };
+                },
+                type: 'positive'
+            },
+            {
+                name: "Unexpected Club Victory",
+                description: "A minor Nike-sponsored club unexpectedly wins a major cup, generating massive positive exposure for its kit and sponsor.",
+                impact: { buzz: 15, relevance: 10, authenticity: 5 },
+                dynamicImpact: (tags) => {
+                    let boost = tags.target === 'target-grassroots' ? 15 : 0; // Rewards grassroots focus
+                    return { change: boost, narrative: tags.target === 'target-grassroots' ? "Your grassroots focus amplified the emotional impact of this underdog story." : "" };
+                },
+                type: 'positive'
+            },
+            {
+                name: "Legendary Endorsement Boom",
+                description: "An iconic ex-player spontaneously praises your latest product, validating the brand's heritage.",
+                impact: { buzz: 10, relevance: 15, authenticity: 10 },
+                dynamicImpact: (tags) => {
+                    let boost = tags.channel === 'channel-legends' ? 15 : 0; // Rewards collaborating with legends
+                    return { change: boost, narrative: tags.channel === 'channel-legends' ? "Your strategy of involving legends created the perfect atmosphere for this organic endorsement." : "" };
+                },
+                type: 'positive'
+            },
+            {
+                name: "Positive Investor Reaction",
+                description: "Market analysts praise Nike's forward-looking strategy, calming fears of the football division's decline.",
+                impact: { buzz: 10, relevance: 5, authenticity: 5 },
+                dynamicImpact: (tags) => {
+                    let boost = tags.investment === 'invest-football' ? 15 : 0; // Rewards risking short-term profit for football
+                    return { change: boost, narrative: tags.investment === 'invest-football' ? "Your decision to heavily invest in football reassured the financial markets of Nike's commitment." : "" };
+                },
+                type: 'positive'
+            },
+
+            // Negative Events (Risk)
+            {
+                name: "Key Player Injury",
+                description: "A prominent Nike-sponsored athlete sustains a major injury, overshadowing all performance-based campaign messaging.",
+                impact: { buzz: -10, relevance: -10, authenticity: 0 },
+                dynamicImpact: (tags) => {
+                    let penalty = tags.focus === 'club-first' ? -15 : 0; // Greater penalty if reliant on elite stars
+                    return { change: penalty, narrative: tags.focus === 'club-first' ? "*CRITICAL EXPOSURE:* Your 'club-first' strategy made this injury highly visible, compounding the negative metric impact." : "" };
+                },
+                type: 'negative'
+            },
+            {
+                name: "Authenticity Backlash",
+                description: "Community critics argue the campaign's 'fan-first' message is corporate tokenism, leading to significant social media pushback.",
+                impact: { buzz: 5, relevance: -5, authenticity: -25 },
+                dynamicImpact: (tags) => {
+                    // Less penalty if they chose quality (mitigates "tokenism" accusations)
+                    let boost = tags.product === 'product-quality' ? 10 : 0; 
+                    return { change: boost, narrative: tags.product === 'product-quality' ? "Your focus on Quality mitigated the 'tokenism' claim, reducing the Authenticity loss." : "" };
+                },
+                type: 'negative'
+            },
+            {
+                name: "Material Cost Spike",
+                description: "Unexpected global supply chain friction drives up the cost of premium materials needed for your new products.",
+                impact: { buzz: -5, relevance: -5, authenticity: 0 },
+                dynamicImpact: (tags) => {
+                    // Punishes quality product and heavy investment
+                    let penalty = 0;
+                    if (tags.product === 'product-quality') penalty -= 10;
+                    if (tags.investment === 'invest-football') penalty -= 5;
+                    return { change: penalty, narrative: penalty < 0 ? "*FINANCIAL STRAIN:* Your commitment to premium quality and heavy investment suffered a major blow due to this unforeseen cost spike." : "" };
+                },
+                type: 'negative'
+            },
+            {
+                name: "Elite Player Walkout",
+                description: "A small group of high-profile elite athletes stages a brief protest against sponsor contract limitations, creating negative buzz.",
+                impact: { buzz: -20, relevance: -5, authenticity: -5 },
+                dynamicImpact: (tags) => {
+                    // Heavily penalizes Elite target and Aggressive sponsorship
+                    let penalty = 0;
+                    if (tags.target === 'target-elite') penalty -= 10;
+                    if (tags.partnership === 'aggressive-sponsor') penalty -= 10;
+                    return { change: penalty, narrative: penalty < 0 ? "*PARTNER VOLATILITY:* Your focus on elite players and aggressive deal terms increased your exposure to this highly public conflict." : "" };
+                },
+                type: 'negative'
+            },
+            {
+                name: "KPI Misalignment Leak",
+                description: "Internal memos suggesting the company prioritizes 'Hype' over 'Authenticity' leak to the press, causing confusion.",
+                impact: { buzz: -5, relevance: -15, authenticity: -15 },
+                dynamicImpact: (tags) => {
+                    // Less severe if they actually chose hype KPI
+                    let boost = tags.kpi === 'kpi-hype' ? 10 : 0;
+                    return { change: boost, narrative: tags.kpi === 'kpi-hype' ? "Because you aligned with the Hype KPI, the leak was less damaging internally, though still disruptive." : "" };
+                },
+                type: 'negative'
+            }
+        ];
+        
+        // --- FUNCTION DEFINITIONS (Moved to top scope for ReferenceError fix) ---
+
+        /** Generates dynamic slogans using the Gemini API. */
+        async function generateCampaignSlogans() {
+            const sloganContainer = document.getElementById('slogan-output');
+            if (!sloganContainer) return;
+
+            // Display loading state
+            sloganContainer.innerHTML = `<div class="p-4 bg-gray-dark rounded-lg mt-8 border border-nike-volt flex items-center justify-center">
+                <div class="spinner"></div>
+                <p class="text-sm text-gray-300 ml-2">Generating campaign taglines (Gemini API)...</p>
+            </div>`;
+
+            const strategySummary = `Focus: ${chosenTags.focus}, Product: ${chosenTags.product}, Target: ${chosenTags.target}. Metrics: Buzz=${metrics.buzz}, Authenticity=${metrics.authenticity}.`;
+            
+            const userQuery = `We finished a Nike Football campaign with the following strategy: ${strategySummary}. The main goal was ${chosenTags.objective}. Generate three innovative, compelling, short marketing slogans (3-6 words each) that align with this specific brand position. Return only the slogans as a numbered list.`;
+            
+            const systemPrompt = "You are a senior Nike marketing director. Your tone is bold, concise, and focused on maximum impact.";
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                // Find the generated text
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Could not retrieve slogans from API.";
+                
+                // Inject results into the final screen
+                sloganContainer.innerHTML = `<div class="p-4 bg-nike-black rounded-lg mt-8 border border-success">
+                    <h4 class="text-xl font-bold text-success mb-3">Generated Campaign Taglines (Gemini Insight):</h4>
+                    <p class="text-gray-300 whitespace-pre-wrap">${text}</p>
+                </div>`;
+
+            } catch (error) {
+                sloganContainer.innerHTML = `<div class="p-4 bg-red-900/40 rounded-lg mt-8 border border-danger">
+                    <h4 class="text-xl font-bold text-danger mb-3">API Error:</h4>
+                    <p class="text-sm text-gray-300">Failed to generate slogans. (Likely network error or API key issue.)</p>
+                </div>`;
+                console.error("Gemini API call failed:", error);
+            }
+        }
+
+        /** Updates the metric display in the dashboard using progress bars. */
+        function updateMetricsDisplay() {
+            for (const key in metrics) {
+                // FIX 2: Check for NaN and reset if necessary
+                if (isNaN(metrics[key])) {
+                    console.error(`Metric corruption detected in ${key}. Resetting to 50.`);
+                    metrics[key] = 50;
+                }
+                
+                const value = Number(metrics[key]);
+                const percentage = Math.round((value / MAX_METRIC) * 100);
+                
+                metricElements[key].num.textContent = value;
+                metricElements[key].bar.style.width = `${percentage}%`;
+
+                // Color coding for urgency (below 50 is a warning)
+                metricElements[key].num.className = `w-10 text-lg font-bold text-right ${value < 50 ? 'text-warning' : metricElements[key].colorClass}`;
+            }
+        }
+
+        /** Renders the current round's question and choices. */
+        function renderRound() {
+            if (currentRound >= rounds.length) {
+                showFinalScreen();
+                return;
+            }
+
+            const round = rounds[currentRound];
+            // UPDATE FOR 8 ROUNDS
+            subHeading.textContent = `Phase: Decision ${currentRound + 1} of ${rounds.length}`;
+            decisionQuestion.textContent = round.question;
+            decisionContext.textContent = round.context;
+            
+            // FIX: Safely remove dynamically injected decision analysis container from the previous round
+            const oldAnalysisContainer = document.getElementById('decision-analysis-container');
+            if (oldAnalysisContainer) {
+                oldAnalysisContainer.parentNode.removeChild(oldAnalysisContainer);
+            }
+
+            // Clear previous choices and feedback
+            if (choiceButtonsContainer) {
+                choiceButtonsContainer.innerHTML = '';
+            }
+            feedbackPanel.classList.add('hidden-start');
+            eventNarrativeContainer.innerHTML = ''; // Clear event narrative
+            
+
+            // Render buttons for choices
+            round.choices.forEach((choice, index) => {
+                const button = document.createElement('button');
+                button.textContent = choice.text;
+                
+                // Button styling is updated to match the Blue/White theme contrast
+                button.className = 'bg-gray-700 hover:bg-gray-600 text-white font-semibold py-4 px-6 rounded-lg transition duration-200 text-left shadow-lg transform hover:scale-[1.02] hover:border-2 hover:border-nike-volt';
+                button.onclick = () => handleChoice(index);
+                choiceButtonsContainer.appendChild(button);
+            });
+        }
+        
+        /** Generates the new deep analysis panel after a decision is made. */
+        function generateDecisionAnalysis(choice) {
+            const analysis = choice.analysis;
+            
+            const renderImpact = (impact) => {
+                let items = [];
+                for (const [key, value] of Object.entries(impact)) {
+                    if (value !== 0) {
+                        const sign = value > 0 ? '+' : '';
+                        const color = value > 0 ? 'text-success' : 'text-danger';
+                        const name = key.charAt(0).toUpperCase() + key.slice(1);
+                        items.push(`<li class="inline-flex items-center mr-4"><span class="${color} font-bold mr-1">${sign}${value}</span> ${name}</li>`);
+                    }
+                }
+                return items.join('');
+            };
+
+            const html = `
+                <div id="decision-analysis-container" class="mt-8 p-5 bg-nike-black rounded-lg border border-gray-700">
+                    <h3 class="text-xl font-bold text-white mb-3">Strategic Impact Breakdown (Pre-Event):</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="p-3 bg-gray-dark rounded-md">
+                            <p class="font-bold text-nike-volt">STATIC IMPACT:</p>
+                            <ul class="flex flex-wrap mt-1 text-sm text-gray-300">
+                                ${renderImpact(choice.impact)}
+                            </ul>
+                            <p class="text-sm italic mt-2">${analysis.static}</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-3 bg-green-900/40 border border-success rounded-md">
+                                <p class="font-bold text-success">FUTURE REWARD (SYNERGY):</p>
+                                <p class="text-sm text-gray-200 mt-1">${analysis.reward}</p>
+                            </div>
+                            <div class="p-3 bg-red-900/40 border border-danger rounded-md">
+                                <p class="font-bold text-danger">FUTURE RISK (CONFLICT):</p>
+                                <p class="text-sm text-gray-200 mt-1">${analysis.risk}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Append the analysis container to the decision panel's parent
+            document.getElementById('decision-panel').insertAdjacentHTML('afterend', html);
+        }
+
+        /** Triggers a random market event (approx 33% chance on rounds 1-7) */
+        function triggerRandomEvent() {
+            // Event occurs on 33% chance for rounds 1-7 (index 0 to 6)
+            if (currentRound >= rounds.length - 1 || Math.random() < 0.67) { 
+                return null;
+            }
+
+            const event = randomEvents[Math.floor(Math.random() * randomEvents.length)];
+            const dynamicResult = event.dynamicImpact ? event.dynamicImpact(chosenTags) : { change: 0, narrative: "" };
+            
+            const dynamicImpactValue = dynamicResult.change;
+            const dynamicEventNarrative = dynamicResult.narrative;
+
+            let finalImpact = { ...event.impact };
+            let totalImpact = 0;
+            
+            // Apply dynamic impact (if applicable), affecting all metrics if dynamicImpactValue is general, or target specific ones
+            if (dynamicImpactValue !== 0) {
+                // Apply specific impacts based on event type and tag synergy/conflict
+                if (event.name === "Viral TikTok Challenge" && dynamicImpactValue > 0) {
+                    finalImpact.buzz += dynamicImpactValue;
+                    // FIX 2: Apply Math.round to fractional impact
+                    finalImpact.relevance += Math.round(dynamicImpactValue / 2);
+                } else if (event.name === "Competitor Misstep: Social Blunder" && dynamicImpactValue > 0) {
+                    finalImpact.authenticity += dynamicImpactValue;
+                } else if (event.name === "Unexpected Club Victory" && dynamicImpactValue > 0) {
+                    finalImpact.authenticity += dynamicImpactValue;
+                    // FIX 2: Apply Math.round to fractional impact
+                    finalImpact.relevance += Math.round(dynamicImpactValue / 2);
+                } else if (event.name === "Legendary Endorsement Boom" && dynamicImpactValue > 0) {
+                    finalImpact.authenticity += dynamicImpactValue;
+                    finalImpact.relevance += dynamicImpactValue;
+                } else if (event.name === "Positive Investor Reaction" && dynamicImpactValue > 0) {
+                    finalImpact.relevance += dynamicImpactValue;
+                }
+                
+                // Negative event dynamics often affect multiple metrics
+                else if (event.name === "Key Player Injury" && dynamicImpactValue < 0) {
+                    finalImpact.buzz += dynamicImpactValue;
+                    finalImpact.relevance += dynamicImpactValue;
+                } else if (event.name === "Authenticity Backlash" && dynamicImpactValue < 0) {
+                    finalImpact.authenticity += dynamicImpactValue;
+                } else if (event.name === "Material Cost Spike" && dynamicImpactValue < 0) {
+                    finalImpact.buzz += dynamicImpactValue;
+                    // FIX 2: Apply Math.round to fractional impact
+                    finalImpact.relevance += Math.round(dynamicImpactValue / 2);
+                } else if (event.name === "Elite Player Walkout" && dynamicImpactValue < 0) {
+                    finalImpact.buzz += dynamicImpactValue;
+                    finalImpact.authenticity += dynamicImpactValue;
+                } else if (event.name === "KPI Misalignment Leak" && dynamicImpactValue < 0) {
+                    finalImpact.relevance += dynamicImpactValue;
+                    finalImpact.authenticity += dynamicImpactValue;
+                }
+            }
+            
+            // Save metrics before event application for total change display
+            const metricsBeforeEvent = { ...metrics };
+
+            // Apply impact to metrics and calculate total change
+            for (const key in finalImpact) {
+                const change = finalImpact[key];
+                // FIX 3: Ensure metrics[key] is treated as a number
+                metrics[key] = Math.max(0, Math.min(MAX_METRIC, Number(metrics[key]) + change));
+            }
+
+            // Calculate Total Impact
+            const eventImpact = {
+                buzz: metrics.buzz - metricsBeforeEvent.buzz,
+                relevance: metrics.relevance - metricsBeforeEvent.relevance,
+                authenticity: metrics.authenticity - metricsBeforeEvent.authenticity
+            };
+
+            totalImpact = eventImpact.buzz + eventImpact.relevance + eventImpact.authenticity;
+
+            // NEW: Record the Event in history
+            gameHistory.push({
+                type: 'Event',
+                round: currentRound + 1,
+                name: event.name,
+                impact: eventImpact, 
+                narrative: event.description + (dynamicEventNarrative ? ' ' + dynamicEventNarrative : '')
+            });
+
+
+            // Generate event narrative HTML
+            const eventHtml = `
+                <div class="event-box event-${event.type} mt-5 mb-5">
+                    <p class="text-2xl font-extrabold mb-2">${event.type === 'positive' ? '✨ MARKET REWARD' : '🚨 CRITICAL RISK'}: ${event.name}</p>
+                    <p class="text-sm">${event.description}</p>
+                    ${dynamicEventNarrative ? `<p class="text-sm italic mt-2">${dynamicEventNarrative}</p>` : ''}
+                    <p class="text-xs mt-3">Net Score Impact: ${totalImpact >= 0 ? '+' : ''}${totalImpact}</p>
+                </div>
+            `;
+            eventNarrativeContainer.innerHTML = eventHtml;
+
+            // Trigger visual pulse for impacted metrics
+            for (const key in finalImpact) {
+                // Only pulse if there was an actual non-zero change from the event
+                if (metrics[key] !== metricsBeforeEvent[key]) {
+                    const barElement = metricElements[key].bar;
+                    const numElement = metricElements[key].num;
+
+                    barElement.classList.add('metric-pulse-active');
+                    numElement.classList.add('metric-pulse-active');
+
+                    setTimeout(() => {
+                        barElement.classList.remove('metric-pulse-active');
+                        numElement.classList.remove('metric-pulse-active');
+                    }, 500);
+                }
+            }
+
+            return totalImpact;
+        }
+
+        /** Calculates the final impact considering dynamic factors. */
+        function calculateFinalImpact(choice) {
+            let finalImpact = { ...choice.impact };
+            let dynamicInsight = '';
+            
+            // Check for dynamic impact function (only present in later rounds)
+            if (choice.dynamicImpact) {
+                const dynamic = choice.dynamicImpact(metrics);
+                
+                finalImpact.buzz += dynamic.buzz;
+                finalImpact.relevance += dynamic.relevance;
+                finalImpact.authenticity += dynamic.authenticity;
+                dynamicInsight = dynamic.narrative;
+            }
+            // Return both the impact and the narrative details
+            return { impact: finalImpact, dynamicInsight: dynamicInsight };
+        }
+
+        /** Handles a user's choice, updates metrics, and shows AI feedback. */
+        window.handleChoice = function(choiceIndex) {
+            const round = rounds[currentRound];
+            const choice = round.choices[choiceIndex];
+            
+            // 0. Record the choice tag
+            chosenTags[round.tagKey] = choice.tag;
+
+            // 1. Generate deep analysis panel BEFORE metric calculation for user insight
+            generateDecisionAnalysis(choice);
+
+            // 2. Calculate and Update Metrics (Choice Impact)
+            const result = calculateFinalImpact(choice);
+            const finalImpact = result.impact;
+            const dynamicInsight = result.dynamicInsight;
+
+            // Save old scores for net change display
+            const metricsBeforeChoice = { ...metrics };
+
+            // FIX 3: Ensure metrics are treated as numbers before updating
+            metrics.buzz = Math.max(0, Math.min(MAX_METRIC, Number(metrics.buzz) + finalImpact.buzz));
+            metrics.relevance = Math.max(0, Math.min(MAX_METRIC, Number(metrics.relevance) + finalImpact.relevance));
+            metrics.authenticity = Math.max(0, Math.min(MAX_METRIC, Number(metrics.authenticity) + finalImpact.authenticity));
+            
+            // Calculate actual net change from CHOICE
+            const netImpactChoice = {
+                buzz: metrics.buzz - metricsBeforeChoice.buzz,
+                relevance: metrics.relevance - metricsBeforeChoice.relevance,
+                authenticity: metrics.authenticity - metricsBeforeChoice.authenticity
+            };
+
+            // NEW: Record the Decision in history
+            gameHistory.push({
+                type: 'Decision',
+                round: currentRound + 1,
+                tag: round.tagKey,
+                choiceText: choice.text,
+                impact: netImpactChoice, // Use the actual net change object
+                narrative: choice.narrative + (dynamicInsight ? ' ' + dynamicInsight : '')
+            });
+            
+            updateMetricsDisplay();
+            
+            // 3. Trigger Random Event 
+            triggerRandomEvent(); 
+            
+            // 4. Show Feedback Panel (improved formatting)
+            feedbackText.innerHTML = `
+                ${choice.narrative}
+                ${dynamicInsight ? `<p class="mt-4 font-bold text-lg text-nike-volt">${dynamicInsight}</p>` : ''}
+                <br>
+                <div class="font-bold text-white mb-2">AI Metric Update (Net Change from DECISION):</div>
+                <ul class="space-y-1">
+                    <li class="pl-4">🔥 Social Buzz: <span class="font-semibold ${netImpactChoice.buzz >= 0 ? 'text-danger' : 'text-red-700'}">${netImpactChoice.buzz >= 0 ? '+' : ''}${netImpactChoice.buzz}</span> (Current Score: ${metrics.buzz})</li>
+                    <li class="pl-4">💡 Cultural Relevance: <span class="font-semibold ${netImpactChoice.relevance >= 0 ? 'text-nike-volt' : 'text-blue-700'}">${netImpactChoice.relevance >= 0 ? '+' : ''}${netImpactChoice.relevance}</span> (Current Score: ${metrics.relevance})</li>
+                    <li class="pl-4">🛡️ Authenticity Score: <span class="font-semibold ${netImpactChoice.authenticity >= 0 ? 'text-success' : 'text-green-700'}">${netImpactChoice.authenticity >= 0 ? '+' : ''}${netImpactChoice.authenticity}</span> (Current Score: ${metrics.authenticity})</li>
+                </ul>
+                <p class="mt-4 text-xs text-gray-500">Press 'Continue Strategy' to proceed to the next critical decision.</p>
+            `;
+            feedbackPanel.classList.remove('hidden-start');
+
+            // 5. Disable Choices
+            Array.from(choiceButtonsContainer.children).forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed', 'border-gray-700');
+                btn.classList.remove('hover:border-nike-volt', 'hover:scale-[1.02]');
+            });
+
+            // 6. Visual Feedback Pulse (only for the choice itself)
+            for (const key in netImpactChoice) {
+                if (netImpactChoice[key] !== 0) {
+                    const barElement = metricElements[key].bar;
+                    const numElement = metricElements[key].num;
+
+                    barElement.classList.add('metric-pulse-active');
+                    numElement.classList.add('metric-pulse-active');
+
+                    setTimeout(() => {
+                        barElement.classList.remove('metric-pulse-active');
+                        numElement.classList.remove('metric-pulse-active');
+                    }, 500);
+                }
+            }
+        }
+
+        // ----------------------------------------------------
+        // NEW: DETAILED ANALYSIS GENERATION FUNCTION
+        // ----------------------------------------------------
+        function generateDetailedAnalysis() {
+            const analysis = {
+                buzz: [],
+                relevance: [],
+                authenticity: [],
+                totalDecisionImpact: { buzz: 0, relevance: 0, authenticity: 0 },
+                totalEventImpact: { buzz: 0, relevance: 0, authenticity: 0 }
+            };
+            
+            let bestDecision = { score: -Infinity, text: "N/A" };
+            let worstEvent = { score: Infinity, name: "N/A" };
+
+            gameHistory.forEach(item => {
+                const source = item.type;
+                const sourceDisplay = source === 'Decision' ? `Decision ${item.round}` : `Event (Round ${item.round})`;
+                const itemTotalImpact = Number(item.impact.buzz) + Number(item.impact.relevance) + Number(item.impact.authenticity);
+
+                // Track best decision and worst event
+                if (source === 'Decision') {
+                    if (itemTotalImpact > bestDecision.score) {
+                        bestDecision.score = itemTotalImpact;
+                        bestDecision.text = item.choiceText;
+                    }
+                } else { // Event
+                    if (itemTotalImpact < worstEvent.score) {
+                        worstEvent.score = itemTotalImpact;
+                        worstEvent.name = item.name;
+                    }
+                }
+                
+                for (const metric of ['buzz', 'relevance', 'authenticity']) {
+                    const change = item.impact[metric];
+                    if (change !== 0) {
+                        analysis[metric].push({
+                            source: sourceDisplay,
+                            change: change,
+                            narrative: item.narrative,
+                            type: source
+                        });
+                        
+                        // FIX: Ensure values are numbers before adding to total impact
+                        if (source === 'Decision') {
+                            analysis.totalDecisionImpact[metric] += Number(change);
+                        } else {
+                            analysis.totalEventImpact[metric] += Number(change);
+                        }
+                    }
+                }
+            });
+
+            const initialScore = 50 * 3;
+            const finalScore = (parseFloat(metrics.buzz) || 0) + (parseFloat(metrics.relevance) || 0) + (parseFloat(metrics.authenticity) || 0);
+
+            let html = `
+                <div class="space-y-8 mt-8 text-left">
+                    <h3 class="text-3xl font-extrabold text-white border-b-2 border-nike-volt pb-2">STRATEGIC POST-MORTEM: WHY YOU SCORED</h3>
+                    
+                    <div class="p-4 bg-gray-dark border border-nike-volt rounded-lg shadow-lg">
+                        <h4 class="text-xl font-bold text-nike-volt mb-3">Overall Score Summary:</h4>
+                        <p class="text-gray-300">Net gain from 8 Decisions: <span class="${analysis.totalDecisionImpact.buzz + analysis.totalDecisionImpact.relevance + analysis.totalDecisionImpact.authenticity >= 0 ? 'text-success' : 'text-danger'} font-bold">${analysis.totalDecisionImpact.buzz + analysis.totalDecisionImpact.relevance + analysis.totalDecisionImpact.authenticity >= 0 ? '+' : ''}${analysis.totalDecisionImpact.buzz + analysis.totalDecisionImpact.relevance + analysis.totalDecisionImpact.authenticity}</span> points.</p>
+                        <p class="text-gray-300">Net gain/loss from Market Events: <span class="${analysis.totalEventImpact.buzz + analysis.totalEventImpact.relevance + analysis.totalEventImpact.authenticity >= 0 ? 'text-success' : 'text-danger'} font-bold">${analysis.totalEventImpact.buzz + analysis.totalEventImpact.relevance + analysis.totalEventImpact.authenticity >= 0 ? '+' : ''}${analysis.totalEventImpact.buzz + analysis.totalEventImpact.relevance + analysis.totalEventImpact.authenticity}</span> points.</p>
+                        <p class="text-gray-300 font-extrabold mt-3">Final Total Score: ${finalScore} (Started at ${initialScore}).</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div class="p-4 bg-green-900/40 border border-success rounded-lg">
+                            <h4 class="text-xl font-bold text-success mb-2">🏆 BEST DECISION</h4>
+                            <p class="text-lg font-semibold">${bestDecision.score > 0 ? `+${bestDecision.score}` : `${bestDecision.score}`} Points</p>
+                            <p class="text-sm text-gray-200 mt-1">${bestDecision.text}</p>
+                        </div>
+                        <div class="p-4 bg-red-900/40 border border-danger rounded-lg">
+                            <h4 class="text-xl font-bold text-danger mb-2">💀 WORST MARKET HIT</h4>
+                            <p class="text-lg font-semibold">${worstEvent.score} Points</p>
+                            <p class="text-sm text-gray-200 mt-1">Event: ${worstEvent.name}</p>
+                        </div>
+                    </div>
+
+
+                    ${['buzz', 'relevance', 'authenticity'].map(metric => {
+                        const metricName = metric.charAt(0).toUpperCase() + metric.slice(1);
+                        const initial = 50;
+                        const final = metrics[metric];
+                        const delta = final - initial;
+                        const metricClass = delta >= 0 ? 'text-success' : 'text-danger';
+
+                        const decisionImpact = analysis.totalDecisionImpact[metric];
+                        const eventImpact = analysis.totalEventImpact[metric];
+
+                        return `
+                            <div class="p-4 border-2 border-gray-700 rounded-lg">
+                                <h4 class="text-2xl font-bold ${metricClass} mb-3">${metricName} Score: ${final} (${delta >= 0 ? '+' : ''}${delta})</h4>
+                                <p class="text-sm text-gray-400 mb-4">
+                                    Total Change from Decisions: <span class="${decisionImpact >= 0 ? 'text-success' : 'text-danger'}">${decisionImpact >= 0 ? '+' : ''}${decisionImpact}</span> | 
+                                    Total Change from Events: <span class="${eventImpact >= 0 ? 'text-success' : 'text-danger'}">${eventImpact >= 0 ? '+' : ''}${eventImpact}</span>
+                                </p>
+                                
+                                <ul class="space-y-3">
+                                    ${analysis[metric].map(item => `
+                                        <li class="p-3 rounded-md ${item.type === 'Decision' ? 'bg-gray-dark' : (item.change > 0 ? 'bg-green-900/50' : 'bg-red-900/50')} border-l-4 ${item.change > 0 ? 'border-success' : 'border-danger'}">
+                                            <span class="font-bold">${item.source} (${item.change >= 0 ? '+' : ''}${item.change}):</span> 
+                                            <span class="text-gray-300">${item.narrative}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            return html;
+        }
+
+
+        /** Displays the final campaign results and narrative. */
+        function showFinalScreen() {
+            dashboard.classList.add('hidden-start');
+            finalScreen.classList.remove('hidden-start');
+
+            // FIX: Defensively parse metrics to prevent NaN error
+            const totalScore = (parseFloat(metrics.buzz) || 0) + 
+                               (parseFloat(metrics.relevance) || 0) + 
+                               (parseFloat(metrics.authenticity) || 0);
+
+            // UPDATE FOR 8 ROUNDS (3 * MAX_METRIC)
+            const MAX_POSSIBLE_SCORE = 3 * MAX_METRIC; // 450
+            const avgScore = totalScore / 3;
+            let ratingMessage = "";
+
+            if (avgScore >= 120) {
+                ratingMessage = `<span class="text-nike-volt">ICONIC VICTORY:</span> You've redefined the market. This campaign is an icon that will dominate the football cultural conversation for years. The legacy is secured.`;
+            } else if (avgScore >= 95) {
+                ratingMessage = `<span class="text-success">STRONG CHALLENGER:</span> A highly effective campaign. You've successfully challenged Adidas's position and secured significant gains in key areas. We are back on the pitch.`;
+            } else if (avgScore >= 75) {
+                ratingMessage = `<span class="text-warning">SOLID EXECUTION:</span> The campaign is balanced, but lacked the crucial high-impact moves needed to truly shift the market. Good, but not iconic. Improvement is needed.`;
+            } else {
+                ratingMessage = `<span class="text-danger">FLAWED STRATEGY:</span> Your strategy failed to connect or create sufficient buzz. This campaign may need a complete overhaul to save the season. Market share is at risk.`;
+            }
+
+            document.getElementById('final-buzz').textContent = metrics.buzz;
+            document.getElementById('final-relevance').textContent = metrics.relevance;
+            document.getElementById('final-authenticity').textContent = metrics.authenticity;
+            document.getElementById('final-summary').textContent = `Your campaign scored a total of ${totalScore} out of ${MAX_POSSIBLE_SCORE} points.`;
+            document.getElementById('final-rating').innerHTML = ratingMessage;
+
+            // NEW: Generate the detailed analysis post-mortem
+            document.getElementById('final-analysis').innerHTML = generateDetailedAnalysis();
+            
+            // NEW: Trigger dynamic slogans AFTER analysis is rendered
+            generateCampaignSlogans();
+        }
+
+        // --- Global Entry Point Definitions (FIX for ReferenceError) ---
+
+        /** Moves to the next decision round. */
+        window.nextRound = function () {
+            currentRound++;
+            renderRound();
+        }
+
+        /** Initializes the game state. */
+        window.startGame = function () {
+            startScreen.classList.add('hidden-start');
+            dashboard.classList.remove('hidden-start');
+            
+            // Reset state (important for re-runs)
+            currentRound = 0;
+            // FIX 1: Ensure initial metrics are strictly numeric
+            metrics = { buzz: 50, relevance: 50, authenticity: 50 }; 
+            // RESET ALL 8 TAGS
+            chosenTags.focus = null;
+            chosenTags.product = null;
+            chosenTags.partnership = null;
+            chosenTags.objective = null;
+            chosenTags.target = null;
+            chosenTags.channel = null;
+            chosenTags.investment = null;
+            chosenTags.kpi = null;
+            
+            gameHistory = []; // RESET HISTORY
+
+            updateMetricsDisplay();
+            renderRound();
+        }
+
+        /** Resets the entire game. */
+        window.resetGame = function () {
+            finalScreen.classList.add('hidden-start');
+            startScreen.classList.remove('hidden-start');
+            subHeading.textContent = `Phase: Strategic Briefing`;
+            metrics = { buzz: 50, relevance: 50, authenticity: 50 };
+            currentRound = 0;
+            updateMetricsDisplay();
+        }
+        
+        /** Generates dynamic slogans using the Gemini API. */
+        async function generateCampaignSlogans() {
+            const sloganContainer = document.getElementById('slogan-output');
+            if (!sloganContainer) return;
+
+            // Display loading state
+            sloganContainer.innerHTML = `<div class="p-4 bg-gray-dark rounded-lg mt-8 border border-nike-volt flex items-center justify-center">
+                <div class="spinner"></div>
+                <p class="text-sm text-gray-300 ml-2">Generating campaign taglines (Gemini API)...</p>
+            </div>`;
+
+            const strategySummary = `Focus: ${chosenTags.focus}, Product: ${chosenTags.product}, Target: ${chosenTags.target}. Metrics: Buzz=${metrics.buzz}, Authenticity=${metrics.authenticity}.`;
+            
+            const userQuery = `We finished a Nike Football campaign with the following strategy: ${strategySummary}. The main goal was ${chosenTags.objective}. Generate three innovative, compelling, short marketing slogans (3-6 words each) that align with this specific brand position. Return only the slogans as a numbered list.`;
+            
+            const systemPrompt = "You are a senior Nike marketing director. Your tone is bold, concise, and focused on maximum impact.";
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                // Find the generated text
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Could not retrieve slogans from API.";
+                
+                // Inject results into the final screen
+                sloganContainer.innerHTML = `<div class="p-4 bg-nike-black rounded-lg mt-8 border border-success">
+                    <h4 class="text-xl font-bold text-success mb-3">Generated Campaign Taglines (Gemini Insight):</h4>
+                    <p class="text-gray-300 whitespace-pre-wrap">${text}</p>
+                </div>`;
+
+            } catch (error) {
+                sloganContainer.innerHTML = `<div class="p-4 bg-red-900/40 rounded-lg mt-8 border border-danger">
+                    <h4 class="text-xl font-bold text-danger mb-3">API Error:</h4>
+                    <p class="text-sm text-gray-300">Failed to generate slogans. (Likely network error or API key issue.)</p>
+                </div>`;
+                console.error("Gemini API call failed:", error);
+            }
+        }
+
+
+        // --- Initialization ---
+        // Attach nextRound to the 'Continue Strategy' button
+        const nextBtn = document.getElementById('next-button');
+        if (nextBtn) {
+            nextBtn.onclick = nextRound;
+        }
+    </script>
+</body>
+</html>
